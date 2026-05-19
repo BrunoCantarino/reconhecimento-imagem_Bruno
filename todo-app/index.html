@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+  <title>TaskFlow — Gerenciador de Tarefas</title>
+  <meta name="description" content="Gerencie suas tarefas com elegância."/>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config={theme:{extend:{colors:{brand:{400:'#818cf8',500:'#6366f1',600:'#4f46e5',700:'#4338ca'},surface:{900:'#0f172a',800:'#1e293b',700:'#334155'}},fontFamily:{sans:['Inter','system-ui','sans-serif']}}}}
+  </script>
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
+  <style>
+    *{box-sizing:border-box}
+    body{background:#0f172a;font-family:'Inter',system-ui,sans-serif}
+    .glass{background:rgba(30,41,59,.6);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);border:1px solid rgba(99,102,241,.15);box-shadow:0 8px 32px rgba(0,0,0,.4),inset 0 1px 0 rgba(255,255,255,.05)}
+    .input-glow:focus{outline:none;border-color:rgba(99,102,241,.7);box-shadow:0 0 0 3px rgba(99,102,241,.15)}
+    .btn-primary{background:linear-gradient(135deg,#6366f1,#4338ca);transition:all .2s}
+    .btn-primary:hover{background:linear-gradient(135deg,#818cf8,#6366f1);transform:translateY(-1px);box-shadow:0 6px 20px rgba(99,102,241,.4)}
+    .btn-primary:active{transform:translateY(0)}
+    @keyframes fadeUp{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:translateY(0)}}
+    .fade-up{animation:fadeUp .4s ease forwards}
+    @keyframes shake{0%,100%{transform:translateX(0)}25%,75%{transform:translateX(-5px)}50%{transform:translateX(5px)}}
+    .shake{animation:shake .35s ease}
+    .tab-active{background:rgba(99,102,241,.15);color:#818cf8;border-bottom:2px solid #6366f1}
+    .custom-checkbox{appearance:none;width:18px;height:18px;border:2px solid rgba(99,102,241,.4);border-radius:5px;cursor:pointer;transition:all .15s;position:relative;flex-shrink:0}
+    .custom-checkbox:checked{background:#6366f1;border-color:#6366f1}
+    .custom-checkbox:checked::after{content:'✓';position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);color:#fff;font-size:11px;font-weight:700}
+    .todo-card{border:1px solid rgba(99,102,241,.1);transition:transform .15s,background .15s}
+    .todo-card:hover{transform:translateX(2px);background:rgba(99,102,241,.06)!important}
+    .todo-done{opacity:.5}
+    .todo-done .todo-title{text-decoration:line-through;color:#64748b}
+    .badge-work{background:rgba(59,130,246,.2);color:#93c5fd;border:1px solid rgba(59,130,246,.3)}
+    .badge-personal{background:rgba(139,92,246,.2);color:#c4b5fd;border:1px solid rgba(139,92,246,.3)}
+    .badge-study{background:rgba(16,185,129,.2);color:#6ee7b7;border:1px solid rgba(16,185,129,.3)}
+    ::-webkit-scrollbar{width:4px}
+    ::-webkit-scrollbar-thumb{background:rgba(99,102,241,.3);border-radius:4px}
+    textarea{resize:vertical}
+  </style>
+</head>
+<body class="min-h-screen text-slate-200 antialiased">
+
+  <!-- AUTH SCREEN -->
+  <div id="auth-screen" class="relative min-h-screen flex items-center justify-center px-4">
+    <div class="absolute inset-0 overflow-hidden pointer-events-none">
+      <div class="absolute -top-32 -left-32 w-96 h-96 rounded-full opacity-10 blur-3xl" style="background:#4f46e5"></div>
+      <div class="absolute -bottom-32 -right-32 w-96 h-96 rounded-full opacity-10 blur-3xl" style="background:#4338ca"></div>
+    </div>
+
+    <div class="relative z-10 w-full max-w-md fade-up">
+      <div class="text-center mb-8">
+        <div class="inline-flex items-center justify-center w-14 h-14 rounded-2xl mb-4" style="background:linear-gradient(135deg,#6366f1,#4338ca);box-shadow:0 8px 24px rgba(99,102,241,.4)">
+          <svg class="w-7 h-7 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"/>
+          </svg>
+        </div>
+        <h1 class="text-3xl font-bold text-white tracking-tight">TaskFlow</h1>
+        <p class="text-slate-400 text-sm mt-1">Produtividade com elegância</p>
+      </div>
+
+      <div class="glass rounded-2xl p-8">
+        <div class="flex rounded-xl overflow-hidden mb-7 bg-surface-800 border border-slate-700/50">
+          <button id="tab-login" onclick="showTab('login')" class="flex-1 py-2.5 text-sm font-medium transition-all tab-active">Entrar</button>
+          <button id="tab-register" onclick="showTab('register')" class="flex-1 py-2.5 text-sm font-medium text-slate-400 transition-all">Criar conta</button>
+        </div>
+
+        <!-- LOGIN -->
+        <form id="login-form" onsubmit="handleLogin(event)" novalidate>
+          <div class="space-y-4">
+            <div>
+              <label class="block text-xs font-medium text-slate-400 mb-1.5 uppercase tracking-wider" for="login-email">E-mail</label>
+              <input id="login-email" type="email" placeholder="seu@email.com" autocomplete="email"
+                class="input-glow w-full px-4 py-3 rounded-xl bg-surface-800 border border-slate-700 text-slate-100 placeholder-slate-500 text-sm transition-all"/>
+            </div>
+            <div>
+              <label class="block text-xs font-medium text-slate-400 mb-1.5 uppercase tracking-wider" for="login-password">Senha</label>
+              <div class="relative">
+                <input id="login-password" type="password" placeholder="••••••••" autocomplete="current-password"
+                  class="input-glow w-full px-4 py-3 rounded-xl bg-surface-800 border border-slate-700 text-slate-100 placeholder-slate-500 text-sm transition-all pr-11"/>
+                <button type="button" onclick="togglePwd('login-password')" class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300">
+                  <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M15 12a3 3 0 11-6 0 3 3 0 016 0zM2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
+                </button>
+              </div>
+            </div>
+            <div id="login-error" class="hidden text-xs text-red-400 bg-red-400/10 border border-red-400/20 rounded-lg px-3 py-2.5">
+              <span id="login-error-text"></span>
+            </div>
+            <button type="submit" class="btn-primary w-full py-3 rounded-xl text-white font-semibold text-sm">Entrar na conta</button>
+          </div>
+        </form>
+
+        <!-- REGISTER -->
+        <form id="register-form" onsubmit="handleRegister(event)" novalidate class="hidden">
+          <div class="space-y-4">
+            <div>
+              <label class="block text-xs font-medium text-slate-400 mb-1.5 uppercase tracking-wider" for="reg-name">Nome completo</label>
+              <input id="reg-name" type="text" placeholder="Seu nome" autocomplete="name"
+                class="input-glow w-full px-4 py-3 rounded-xl bg-surface-800 border border-slate-700 text-slate-100 placeholder-slate-500 text-sm transition-all"/>
+            </div>
+            <div>
+              <label class="block text-xs font-medium text-slate-400 mb-1.5 uppercase tracking-wider" for="reg-email">E-mail</label>
+              <input id="reg-email" type="email" placeholder="seu@email.com" autocomplete="email"
+                class="input-glow w-full px-4 py-3 rounded-xl bg-surface-800 border border-slate-700 text-slate-100 placeholder-slate-500 text-sm transition-all"/>
+            </div>
+            <div>
+              <label class="block text-xs font-medium text-slate-400 mb-1.5 uppercase tracking-wider" for="reg-password">Senha</label>
+              <div class="relative">
+                <input id="reg-password" type="password" placeholder="Mínimo 6 caracteres" autocomplete="new-password"
+                  class="input-glow w-full px-4 py-3 rounded-xl bg-surface-800 border border-slate-700 text-slate-100 placeholder-slate-500 text-sm transition-all pr-11"/>
+                <button type="button" onclick="togglePwd('reg-password')" class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300">
+                  <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M15 12a3 3 0 11-6 0 3 3 0 016 0zM2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
+                </button>
+              </div>
+            </div>
+            <div id="register-error" class="hidden text-xs text-red-400 bg-red-400/10 border border-red-400/20 rounded-lg px-3 py-2.5">
+              <span id="register-error-text"></span>
+            </div>
+            <div id="register-success" class="hidden text-xs text-emerald-400 bg-emerald-400/10 border border-emerald-400/20 rounded-lg px-3 py-2.5">
+              ✓ Conta criada! Faça login para continuar.
+            </div>
+            <button type="submit" class="btn-primary w-full py-3 rounded-xl text-white font-semibold text-sm">Criar minha conta</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- APP / DASHBOARD -->
+  <div id="app-screen" class="hidden min-h-screen flex flex-col">
+
+    <!-- Header -->
+    <header class="sticky top-0 z-50 glass border-b border-slate-700/40">
+      <div class="max-w-4xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
+        <div class="flex items-center gap-3">
+          <div class="w-8 h-8 rounded-lg flex items-center justify-center" style="background:linear-gradient(135deg,#6366f1,#4338ca)">
+            <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"/>
+            </svg>
+          </div>
+          <div>
+            <p class="text-xs text-slate-500 leading-none">Bem-vindo de volta</p>
+            <p class="text-sm font-semibold text-white leading-snug" id="header-greeting"></p>
+          </div>
+        </div>
+        <div class="flex items-center gap-3">
+          <div id="user-avatar" class="w-8 h-8 rounded-full bg-brand-600 flex items-center justify-center text-xs font-bold text-white hidden sm:flex"></div>
+          <button onclick="handleLogout()" class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-slate-400 hover:text-red-400 hover:bg-red-400/10 text-xs font-medium transition-all border border-transparent hover:border-red-400/20">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/></svg>
+            Sair
+          </button>
+        </div>
+      </div>
+    </header>
+
+    <main class="flex-1 max-w-4xl mx-auto w-full px-4 sm:px-6 py-8 space-y-6">
+
+      <!-- Stats row -->
+      <div class="grid grid-cols-3 gap-4 fade-up">
+        <div class="glass rounded-xl p-4 text-center">
+          <p class="text-2xl font-bold text-white" id="stat-total">0</p>
+          <p class="text-xs text-slate-500 mt-0.5 uppercase tracking-wider">Total</p>
+        </div>
+        <div class="glass rounded-xl p-4 text-center">
+          <p class="text-2xl font-bold text-emerald-400" id="stat-done">0</p>
+          <p class="text-xs text-slate-500 mt-0.5 uppercase tracking-wider">Concluídas</p>
+        </div>
+        <div class="glass rounded-xl p-4 text-center">
+          <p class="text-2xl font-bold text-brand-400" id="stat-pending">0</p>
+          <p class="text-xs text-slate-500 mt-0.5 uppercase tracking-wider">Pendentes</p>
+        </div>
+      </div>
+
+      <!-- Progress -->
+      <div class="glass rounded-xl px-5 py-4 fade-up">
+        <div class="flex justify-between text-xs text-slate-400 mb-2">
+          <span>Progresso geral</span>
+          <span id="progress-pct">0%</span>
+        </div>
+        <div class="w-full h-2 bg-surface-700 rounded-full overflow-hidden">
+          <div id="progress-bar" class="h-full rounded-full transition-all duration-500" style="width:0%;background:linear-gradient(90deg,#6366f1,#818cf8)"></div>
+        </div>
+      </div>
+
+      <!-- Add task form -->
+      <div class="glass rounded-2xl p-6 fade-up">
+        <h2 class="text-sm font-semibold text-slate-300 mb-5 uppercase tracking-wider flex items-center gap-2">
+          <svg class="w-4 h-4 text-brand-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+          Nova Tarefa
+        </h2>
+        <form id="todo-form" onsubmit="handleAddTodo(event)" novalidate>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
+            <div>
+              <label class="block text-xs font-medium text-slate-400 mb-1.5 uppercase tracking-wider" for="todo-title">Título <span class="text-red-400">*</span></label>
+              <input id="todo-title" type="text" placeholder="Ex: Revisar relatório mensal"
+                class="input-glow w-full px-4 py-3 rounded-xl bg-surface-800 border border-slate-700 text-slate-100 placeholder-slate-500 text-sm transition-all"/>
+            </div>
+            <div>
+              <label class="block text-xs font-medium text-slate-400 mb-1.5 uppercase tracking-wider" for="todo-type">Tipo</label>
+              <select id="todo-type" class="input-glow w-full px-4 py-3 rounded-xl bg-surface-800 border border-slate-700 text-slate-300 text-sm transition-all cursor-pointer">
+                <option value="work">💼 Trabalho</option>
+                <option value="personal">🏠 Pessoal</option>
+                <option value="study">📚 Estudos</option>
+              </select>
+            </div>
+          </div>
+          <div class="mb-4">
+            <label class="block text-xs font-medium text-slate-400 mb-1.5 uppercase tracking-wider" for="todo-desc">Descrição <span class="text-slate-600">(opcional)</span></label>
+            <textarea id="todo-desc" rows="2" placeholder="Detalhes sobre a tarefa…"
+              class="input-glow w-full px-4 py-3 rounded-xl bg-surface-800 border border-slate-700 text-slate-100 placeholder-slate-500 text-sm transition-all"></textarea>
+          </div>
+          <div id="todo-error" class="hidden mb-3 text-xs text-red-400 bg-red-400/10 border border-red-400/20 rounded-lg px-3 py-2">
+            O título da tarefa é obrigatório.
+          </div>
+          <button type="submit" class="btn-primary px-6 py-2.5 rounded-xl text-white font-semibold text-sm flex items-center gap-2">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+            Adicionar Tarefa
+          </button>
+        </form>
+      </div>
+
+      <!-- Task list -->
+      <div class="fade-up">
+        <h2 class="text-sm font-semibold text-slate-300 mb-4 uppercase tracking-wider flex items-center gap-2">
+          <svg class="w-4 h-4 text-brand-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"/></svg>
+          Minhas Tarefas
+        </h2>
+        <div id="todo-list" class="space-y-3"></div>
+        <div id="empty-state" class="hidden text-center py-14 glass rounded-2xl">
+          <div class="w-16 h-16 rounded-2xl mx-auto mb-4 flex items-center justify-center bg-surface-800 border border-slate-700/60">
+            <svg class="w-8 h-8 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
+          </div>
+          <p class="text-slate-400 text-sm font-medium">Nenhuma tarefa cadastrada ainda.</p>
+          <p class="text-slate-600 text-xs mt-1">Use o formulário acima para adicionar sua primeira tarefa.</p>
+        </div>
+      </div>
+
+    </main>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
